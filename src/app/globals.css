@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background-image: radial-gradient(circle at 15% 0%, rgba(201, 162, 75, 0.08), transparent 40%);
+}
+
+::selection {
+  background: rgba(201, 162, 75, 0.35);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid #c9a24b;
+  outline-offset: 2px;
+}
+
+.field {
+  @apply w-full rounded-md border border-line bg-ink px-3 py-2.5 text-parch placeholder:text-mute/60 transition-colors;
+}
+.field:focus {
+  @apply border-gold;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-md bg-gold px-4 py-2.5 font-medium text-ink transition-colors hover:bg-goldDim disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center rounded-md border border-line px-4 py-2.5 font-medium text-parch transition-colors hover:border-gold hover:text-gold disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+.card {
+  @apply rounded-lg border border-line bg-surface;
+}
