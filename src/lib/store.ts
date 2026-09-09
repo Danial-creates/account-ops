@@ -24,7 +24,7 @@ export async function listAccountTypes(): Promise<AccountType[]> {
         name: hash.name,
         required: Number(hash.required ?? 0),
         assigned,
-        open: hash.open === "1",
+        open: String(hash.open) === "1",
         createdAt: hash.createdAt ?? "",
       };
       return t;
@@ -77,7 +77,7 @@ export async function updateAccountType(
     name: hash.name,
     required: Number(hash.required ?? 0),
     assigned: Number(assignedRaw ?? 0),
-    open: hash.open === "1",
+    open: String(hash.open) === "1",
     createdAt: hash.createdAt ?? "",
   };
 }
@@ -101,7 +101,7 @@ export async function getAccountType(id: string): Promise<AccountType | null> {
     name: hash.name,
     required: Number(hash.required ?? 0),
     assigned: Number(assignedRaw ?? 0),
-    open: hash.open === "1",
+    open: String(hash.open) === "1",
     createdAt: hash.createdAt ?? "",
   };
 }
