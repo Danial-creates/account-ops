@@ -3,7 +3,7 @@ import { deleteAccountType, getAccountType, updateAccountType } from "@/lib/stor
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
-  const updates: { name?: string; required?: number; open?: boolean } = {};
+  const updates: { name?: string; required?: number; open?: boolean; price?: number } = {};
 
   if (body?.name !== undefined) {
     const name = String(body.name).trim();
@@ -29,6 +29,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       );
     }
     updates.required = required;
+  }
+
+  if (body?.price !== undefined) {
+    const price = Number(body.price);
+    if (!Number.isFinite(price) || price < 0) {
+      return NextResponse.json({ error: "Price must be a number of 0 or more" }, { status: 400 });
+    }
+    updates.price = price;
   }
 
   if (body?.open !== undefined) {
