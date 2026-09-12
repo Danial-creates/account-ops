@@ -3,6 +3,7 @@ export interface AccountType {
   name: string;
   required: number;
   assigned: number;
+  price: number;
   open: boolean;
   createdAt: string;
 }
@@ -11,6 +12,7 @@ export interface PublicAccountType {
   id: string;
   name: string;
   remaining: number;
+  price: number;
 }
 
 export interface Submission {
@@ -19,5 +21,7 @@ export interface Submission {
   accountTypeId: string;
   accountTypeName: string;
   quantity: number;
+  price: number;
+  total: number;
   timestamp: string;
 }
