@@ -10,6 +10,7 @@ export async function GET() {
       id: t.id,
       name: t.name,
       remaining: t.required - t.assigned,
+      price: t.price,
     }));
   return NextResponse.json({ types: publicTypes });
 }
