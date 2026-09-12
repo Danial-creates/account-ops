@@ -4,6 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AccountType, Submission } from "@/lib/types";
 
+function formatMoney(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+function statusOf(type: AccountType): { label: string; className: string } {
+  const remaining = Math.max(type.required - type.assigned, 0);
+  if (!type.open) return { label: "Closed", className: "badge-closed" };
+  if (remaining <= 0) return { label: "Sold out", className: "badge-soldout" };
+  return { label: "Open", className: "badge-open" };
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [types, setTypes] = useState<AccountType[]>([]);
@@ -50,25 +61,37 @@ export default function AdminDashboardPage() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const openCount = types.filter((t) => statusOf(t).label === "Open").length;
+  const totalRemaining = types.reduce((sum, t) => sum + Math.max(t.required - t.assigned, 0), 0);
+
   return (
-    <main className="mx-auto max-w-5xl px-5 py-10">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-mute">Account Ops</p>
-          <h1 className="font-display text-2xl font-semibold text-parch sm:text-3xl">Dashboard</h1>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gold">Account Ops</p>
+          <h1 className="mt-1 font-display text-2xl font-semibold text-parch sm:text-3xl">
+            Dashboard
+          </h1>
         </div>
-        <button onClick={handleLogout} className="btn-ghost">
+        <button onClick={handleLogout} className="btn-ghost shrink-0">
           Sign out
         </button>
       </header>
 
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile label="Account types" value={String(types.length)} />
+        <StatTile label="Currently open" value={String(openCount)} />
+        <StatTile label="Total remaining" value={String(totalRemaining)} />
+        <StatTile label="Submissions" value={String(submissions.length)} />
+      </section>
+
       <section className="card mt-6 flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium text-parch">Worker link</p>
           <p className="text-sm text-mute">Send this to workers. No login required.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <code className="rounded-md border border-line bg-ink px-3 py-2 text-sm text-gold">
+        <div className="flex min-w-0 items-center gap-2">
+          <code className="min-w-0 flex-1 truncate rounded-md border border-line bg-ink px-3 py-2 text-sm text-gold sm:flex-none">
             {workerLink || "loading…"}
           </code>
           <button onClick={copyLink} className="btn-ghost shrink-0" disabled={!workerLink}>
@@ -85,14 +108,14 @@ export default function AdminDashboardPage() {
 
       <NewTypeForm onCreated={load} />
 
-      <section className="mt-8">
+      <section className="mt-10">
         <h2 className="font-display text-lg font-semibold text-parch">Account types</h2>
         {loading ? (
           <p className="mt-3 text-mute">Loading…</p>
         ) : types.length === 0 ? (
           <p className="mt-3 text-mute">No account types yet. Add one above.</p>
         ) : (
-          <div className="mt-3 grid gap-3">
+          <div className="mt-4 grid gap-3">
             {types.map((t) => (
               <TypeRow key={t.id} type={t} onChanged={load} />
             ))}
@@ -105,24 +128,36 @@ export default function AdminDashboardPage() {
         {submissions.length === 0 ? (
           <p className="mt-3 text-mute">No submissions yet.</p>
         ) : (
-          <div className="card mt-3 overflow-hidden">
-            <div className="max-h-[420px] overflow-y-auto">
-              <table className="w-full text-left text-sm">
+          <div className="card mt-4 overflow-hidden">
+            <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="sticky top-0 bg-raised text-mute">
                   <tr>
                     <th className="px-4 py-2.5 font-medium">Worker</th>
                     <th className="px-4 py-2.5 font-medium">Type</th>
                     <th className="px-4 py-2.5 font-medium">Qty</th>
+                    <th className="px-4 py-2.5 font-medium">Price</th>
+                    <th className="px-4 py-2.5 font-medium">Total</th>
                     <th className="px-4 py-2.5 font-medium">When</th>
                   </tr>
                 </thead>
                 <tbody>
                   {submissions.map((s) => (
                     <tr key={s.id} className="border-t border-line">
-                      <td className="px-4 py-2.5 text-parch">{s.discordUsername}</td>
-                      <td className="px-4 py-2.5 text-parch">{s.accountTypeName}</td>
+                      <td className="max-w-[160px] truncate px-4 py-2.5 text-parch">
+                        {s.discordUsername}
+                      </td>
+                      <td className="max-w-[220px] truncate px-4 py-2.5 text-parch">
+                        {s.accountTypeName}
+                      </td>
                       <td className="px-4 py-2.5 text-parch">{s.quantity}</td>
-                      <td className="px-4 py-2.5 text-mute">
+                      <td className="whitespace-nowrap px-4 py-2.5 text-mute">
+                        {formatMoney(s.price ?? 0)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 font-medium text-gold">
+                        {formatMoney(s.total ?? 0)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-mute">
                         {new Date(s.timestamp).toLocaleString()}
                       </td>
                     </tr>
@@ -137,9 +172,19 @@ export default function AdminDashboardPage() {
   );
 }
 
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="card p-4">
+      <p className="label">{label}</p>
+      <p className="mt-1.5 font-display text-2xl font-semibold text-parch">{value}</p>
+    </div>
+  );
+}
+
 function NewTypeForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [required, setRequired] = useState("");
+  const [price, setPrice] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -151,12 +196,13 @@ function NewTypeForm({ onCreated }: { onCreated: () => void }) {
       const res = await fetch("/api/admin/account-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, required: Number(required) }),
+        body: JSON.stringify({ name, required: Number(required), price: Number(price) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to create");
       setName("");
       setRequired("");
+      setPrice("");
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create");
@@ -166,39 +212,64 @@ function NewTypeForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card mt-8 flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
-      <div className="flex-1">
-        <label className="block text-sm text-mute" htmlFor="new-name">
-          New account type
-        </label>
-        <input
-          id="new-name"
-          className="field mt-1.5"
-          placeholder="e.g. Main accounts, Botting mules"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
+    <form onSubmit={handleSubmit} className="card mt-10 p-5">
+      <h2 className="font-display text-lg font-semibold text-parch">New account type</h2>
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_140px_140px_auto] sm:items-end">
+        <div className="min-w-0">
+          <label className="label" htmlFor="new-name">
+            Name
+          </label>
+          <input
+            id="new-name"
+            className="field mt-1.5"
+            placeholder="e.g. Main accounts, Botting mules"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="min-w-0">
+          <label className="label" htmlFor="new-required">
+            Required qty
+          </label>
+          <input
+            id="new-required"
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            className="field mt-1.5"
+            value={required}
+            onChange={(e) => setRequired(e.target.value)}
+            required
+          />
+        </div>
+        <div className="min-w-0">
+          <label className="label" htmlFor="new-price">
+            Price / account
+          </label>
+          <div className="relative mt-1.5">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mute">
+              $
+            </span>
+            <input
+              id="new-price"
+              type="number"
+              min={0}
+              step={0.01}
+              inputMode="decimal"
+              className="field pl-7"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
+          {saving ? "Adding…" : "Add type"}
+        </button>
       </div>
-      <div className="sm:w-40">
-        <label className="block text-sm text-mute" htmlFor="new-required">
-          Required qty
-        </label>
-        <input
-          id="new-required"
-          type="number"
-          min={0}
-          step={1}
-          className="field mt-1.5"
-          value={required}
-          onChange={(e) => setRequired(e.target.value)}
-          required
-        />
-      </div>
-      <button type="submit" className="btn-primary sm:w-auto" disabled={saving}>
-        {saving ? "Adding…" : "Add type"}
-      </button>
-      {error && <p className="text-sm text-rust sm:basis-full">{error}</p>}
+      {error && <p className="mt-3 text-sm text-rust">{error}</p>}
     </form>
   );
 }
@@ -207,9 +278,11 @@ function TypeRow({ type, onChanged }: { type: AccountType; onChanged: () => void
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type.name);
   const [required, setRequired] = useState(String(type.required));
+  const [price, setPrice] = useState(String(type.price));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const remaining = Math.max(type.required - type.assigned, 0);
+  const status = statusOf(type);
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
@@ -243,28 +316,46 @@ function TypeRow({ type, onChanged }: { type: AccountType; onChanged: () => void
   }
 
   return (
-    <div className="card p-4">
+    <div className="card p-5">
       {editing ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex-1">
-            <label className="block text-xs text-mute">Name</label>
-            <input className="field mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="grid gap-3 sm:grid-cols-[1fr_120px_120px_auto] sm:items-end">
+          <div className="min-w-0">
+            <label className="label">Name</label>
+            <input className="field mt-1.5" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <div className="sm:w-32">
-            <label className="block text-xs text-mute">Required</label>
+          <div className="min-w-0">
+            <label className="label">Required</label>
             <input
               type="number"
               min={0}
-              className="field mt-1"
+              inputMode="numeric"
+              className="field mt-1.5"
               value={required}
               onChange={(e) => setRequired(e.target.value)}
             />
+          </div>
+          <div className="min-w-0">
+            <label className="label">Price</label>
+            <div className="relative mt-1.5">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-mute">
+                $
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                inputMode="decimal"
+                className="field pl-7"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <button
               className="btn-primary"
               disabled={busy}
-              onClick={() => patch({ name, required: Number(required) })}
+              onClick={() => patch({ name, required: Number(required), price: Number(price) })}
             >
               Save
             </button>
@@ -274,45 +365,6 @@ function TypeRow({ type, onChanged }: { type: AccountType; onChanged: () => void
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-parch">{type.name}</p>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  type.open ? "bg-moss/15 text-moss" : "bg-rust/15 text-rust"
-                }`}
-              >
-                {type.open ? "Open" : "Closed"}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-mute">
-              {type.assigned} assigned / {type.required} required ·{" "}
-              <span className="text-parch">{remaining} remaining</span>
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              className="btn-ghost"
-              disabled={busy}
-              onClick={() => patch({ open: !type.open })}
-            >
-              {type.open ? "Close" : "Open"}
-            </button>
-            <button className="btn-ghost" disabled={busy} onClick={() => setEditing(true)}>
-              Edit
-            </button>
-            <button
-              className="btn-ghost border-rust/40 text-rust hover:border-rust hover:text-rust"
-              disabled={busy}
-              onClick={handleDelete}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
-      {error && <p className="mt-2 text-sm text-rust">{error}</p>}
-    </div>
-  );
-}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap
