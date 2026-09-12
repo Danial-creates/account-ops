@@ -8,6 +8,10 @@ function isValidDiscordUsername(name: string): boolean {
   return /^[a-z0-9._]{2,32}$/i.test(name) || (name.length >= 2 && name.length <= 37);
 }
 
+function formatMoney(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
 
@@ -35,12 +39,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: reservation.reason }, { status: 400 });
   }
 
+  const total = Math.round(type.price * quantity * 100) / 100;
+
   const submission: Submission = {
     id: randomUUID(),
     discordUsername,
     accountTypeId,
     accountTypeName: type.name,
     quantity,
+    price: type.price,
+    total,
     timestamp: new Date().toISOString(),
   };
 
@@ -69,7 +77,11 @@ export async function POST(req: NextRequest) {
                 { name: "Worker", value: submission.discordUsername, inline: true },
                 { name: "Account type", value: submission.accountTypeName, inline: true },
                 { name: "Quantity", value: String(submission.quantity), inline: true },
+                { name: "Price per account", value: formatMoney(submission.price), inline: true },
+                { name: "Total price", value: formatMoney(submission.total), inline: true },
+                { name: "Remaining after this", value: String(reservation.remaining), inline: true },
               ],
+              footer: { text: new Date(submission.timestamp).toUTCString() },
               timestamp: submission.timestamp,
             },
           ],
@@ -80,5 +92,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, remaining: reservation.remaining });
+  return NextResponse.json({ ok: true, remaining: reservation.remaining, total });
 }
