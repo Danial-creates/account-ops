@@ -7,6 +7,25 @@ const typeKey = (id: string) => `account_type:${id}`;
 const assignedKey = (id: string) => `assigned:${id}`;
 const SUBMISSIONS_KEY = "submissions";
 
+// Redis may hand back hash values that look numeric (e.g. "1", "0") already
+// coerced to actual numbers by the client's auto-deserialization. Comparing
+// through String(...) makes the check work no matter which shape comes back.
+function isOpenFlag(value: unknown): boolean {
+  return String(value) === "1";
+}
+
+function toAccountType(id: string, hash: Record<string, string>, assignedRaw: unknown): AccountType {
+  return {
+    id,
+    name: hash.name,
+    required: Number(hash.required ?? 0),
+    assigned: Number(assignedRaw ?? 0),
+    price: Number(hash.price ?? 0),
+    open: isOpenFlag(hash.open),
+    createdAt: hash.createdAt ?? "",
+  };
+}
+
 export async function listAccountTypes(): Promise<AccountType[]> {
   const ids = (await redis.smembers(TYPE_IDS_KEY)) as string[];
   if (!ids || ids.length === 0) return [];
@@ -18,16 +37,7 @@ export async function listAccountTypes(): Promise<AccountType[]> {
         redis.get<number | string>(assignedKey(id)),
       ]);
       if (!hash || !hash.name) return null;
-      const assigned = Number(assignedRaw ?? 0);
-      const t: AccountType = {
-        id,
-        name: hash.name,
-        required: Number(hash.required ?? 0),
-        assigned,
-        open: String(hash.open) === "1",
-        createdAt: hash.createdAt ?? "",
-      };
-      return t;
+      return toAccountType(id, hash, assignedRaw);
     })
   );
 
@@ -36,23 +46,28 @@ export async function listAccountTypes(): Promise<AccountType[]> {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export async function createAccountType(name: string, required: number): Promise<AccountType> {
+export async function createAccountType(
+  name: string,
+  required: number,
+  price: number
+): Promise<AccountType> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
   await redis.sadd(TYPE_IDS_KEY, id);
   await redis.hset(typeKey(id), {
     name,
     required: String(required),
+    price: String(price),
     open: "1",
     createdAt,
   });
   await redis.set(assignedKey(id), 0);
-  return { id, name, required, assigned: 0, open: true, createdAt };
+  return { id, name, required, assigned: 0, price, open: true, createdAt };
 }
 
 export async function updateAccountType(
   id: string,
-  updates: Partial<Pick<AccountType, "name" | "required" | "open">>
+  updates: Partial<Pick<AccountType, "name" | "required" | "open" | "price">>
 ): Promise<AccountType | null> {
   const exists = await redis.sismember(TYPE_IDS_KEY, id);
   if (!exists) return null;
@@ -60,6 +75,7 @@ export async function updateAccountType(
   const patch: Record<string, string> = {};
   if (updates.name !== undefined) patch.name = updates.name;
   if (updates.required !== undefined) patch.required = String(updates.required);
+  if (updates.price !== undefined) patch.price = String(updates.price);
   if (updates.open !== undefined) patch.open = updates.open ? "1" : "0";
 
   if (Object.keys(patch).length > 0) {
@@ -72,14 +88,7 @@ export async function updateAccountType(
   ]);
   if (!hash) return null;
 
-  return {
-    id,
-    name: hash.name,
-    required: Number(hash.required ?? 0),
-    assigned: Number(assignedRaw ?? 0),
-    open: String(hash.open) === "1",
-    createdAt: hash.createdAt ?? "",
-  };
+  return toAccountType(id, hash, assignedRaw);
 }
 
 export async function deleteAccountType(id: string): Promise<void> {
@@ -96,14 +105,7 @@ export async function getAccountType(id: string): Promise<AccountType | null> {
     redis.get<number | string>(assignedKey(id)),
   ]);
   if (!hash || !hash.name) return null;
-  return {
-    id,
-    name: hash.name,
-    required: Number(hash.required ?? 0),
-    assigned: Number(assignedRaw ?? 0),
-    open: String(hash.open) === "1",
-    createdAt: hash.createdAt ?? "",
-  };
+  return toAccountType(id, hash, assignedRaw);
 }
 
 /**
