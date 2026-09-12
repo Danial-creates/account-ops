@@ -367,4 +367,42 @@ function TypeRow({ type, onChanged }: { type: AccountType; onChanged: () => void
       ) : (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="wrap-anywhere font-medium text-parch">{type.name}</p>
+              <span className={`badge ${status.className}`}>{status.label}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+              <Stat label="Required" value={String(type.required)} />
+              <Stat label="Claimed" value={String(type.assigned)} />
+              <Stat label="Remaining" value={String(remaining)} highlight />
+              <Stat label="Price" value={formatMoney(type.price)} />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <button className="btn-ghost" disabled={busy} onClick={() => patch({ open: !type.open })}>
+              {type.open ? "Close" : "Open"}
+            </button>
+            <button className="btn-ghost" disabled={busy} onClick={() => setEditing(true)}>
+              Edit
+            </button>
+            <button className="btn-danger" disabled={busy} onClick={handleDelete}>
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p className="mt-2 text-sm text-rust">{error}</p>}
+    </div>
+  );
+}
+
+function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="label">{label}</p>
+      <p className={`mt-0.5 truncate text-sm font-semibold ${highlight ? "text-gold" : "text-parch"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
